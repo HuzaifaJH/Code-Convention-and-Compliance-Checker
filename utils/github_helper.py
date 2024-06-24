@@ -9,7 +9,7 @@ username = 'Farukh-Shaikh'
 repository = 'Order-Management'
 token = os.getenv('GITHUB_TOKEN')
 
-base_dir = '../resources/github_files'
+base_dir = './resources/github_files'
 
 repo_url = f'https://api.github.com/repos/{username}/{repository}/contents'
 
@@ -30,21 +30,35 @@ def get_file_content(file_url):
     return response.text
 
 def save_file(file_path, content):
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    # Print statements to debug path issues
+    print(f"Saving file to: {file_path}")
+    directory = os.path.dirname(file_path)
+    print(f"Directory to create: {directory}")
+    
+    # Ensure the directory exists
+    os.makedirs(directory, exist_ok=True)
+    
+    # Write the file content
     with open(file_path, 'w', encoding='utf-8') as file:
         file.write(content)
+        print(f"File saved successfully: {file_path}")
 
-def process_directory(contents_url, current_dir):
+
+def process_directory(contents_url):
     contents = get_repo_contents(contents_url)
     for content in contents:
         if content['type'] == 'file':
             file_content = get_file_content(content['url'])
-            file_path = os.path.join(base_dir, current_dir, content['name'] + '.txt')
+            # Append '.txt' extension and ensure forward slashes
+            file_name = content['name'] + '.txt'
+            file_path = os.path.join(base_dir, file_name).replace('\\', '/')
             save_file(file_path, file_content)
             print(f"Saved file: {file_path}")
         elif content['type'] == 'dir':
-            new_dir = os.path.join(current_dir, content['name'])
-            process_directory(content['url'], new_dir)
+            new_dir = os.path.join( content['name']).replace('\\', '/')
+            process_directory(content['url'])
 
 # URL to the repository contents
 repo_url = f'https://api.github.com/repos/{username}/{repository}/contents'
+
+process_directory(repo_url)
