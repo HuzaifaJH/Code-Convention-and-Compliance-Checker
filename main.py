@@ -5,6 +5,8 @@ from utils import prompt_helper
 import os
 from dotenv import load_dotenv
 import requests
+import json
+from utils.github_helper import process_directory
 
 load_dotenv()
 
@@ -50,5 +52,91 @@ def CheckCodeConventions():
 def UploadVectorFile():
     return
 
+def upload_files_from_directory(vector_store_id, directory_path):
+    files_uploaded = []
+    
+    # Fetch existing files in the vector store
+    # existing_files = client.beta.vector_stores.files.list(vector_store_id=vector_store_id)
+    existing_files = client.files.list()
+    existing_file_names = {file.filename: file for file in existing_files}
+    
+    for filename in os.listdir(directory_path):
+        file_path = os.path.join(directory_path, filename)
+        
+        if os.path.isfile(file_path):
+            try:
+                # Check if the file already exists in the vector store
+                if filename in existing_file_names:
+                    existing_file = existing_file_names[filename]
+                    # Delete the existing file
+                    client.files.delete(file_id=existing_file.id)
+                    print(f"Deleted existing file: {filename} ({existing_file.id})")
+
+                # Upload file to OpenAI
+                upload_response = client.files.create(
+                    file=open(file_path, "rb"),
+                    purpose='assistants',
+                )
+                files_uploaded.append({
+                    'filename': filename,
+                    'file_id': upload_response.id,
+                    'upload_response': upload_response
+                })
+                print(f"Uploaded {filename} successfully. File ID: {upload_response.id}")
+                
+            except openai.error.OpenAIError as e:
+                print(f"Failed to upload {filename}: {e}")
+    
+    return files_uploaded
+
+def create_file_batch(vector_store_id, file_ids):
+    batch_add = client.beta.vector_stores.file_batches.create(
+        vector_store_id=vector_store_id,
+        file_ids=file_ids
+    )
+    print(f"Batch creation initiated. Batch ID: {batch_add.id}")
+    
+    # Monitor batch status until it's not in_progress
+    while batch_add.status == 'in_progress':
+        time.sleep(1)
+        batch_add = client.beta.vector_stores.file_batches.retrieve(
+            vector_store_id=vector_store_id,
+            batch_id=batch_add.id
+        )
+        print(f"Current status: {batch_add.status}")
+    
+    print(f"Batch creation status: {batch_add.status}")
+
+# def get_vector_store_files(vector_store_id):
+#     files = client.beta.vector_stores.files.list(vector_store_id)
+#     # Convert the complex object to a list of dictionaries
+#     files_list = [file.to_dict() for file in files]
+#     return files_list
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    # GitHub processing
+    owner = 'Farukh-Shaikh'
+    repo = 'Order-Management'
+    repo_url = f'https://api.github.com/repos/{owner}/{repo}/contents'
+    
+    
+    vector_store_id = 'vs_FEaAVUV1u1j9AOFWb2mKC9a9'
+
+    try:
+        # process_directory(repo_url)
+        directory_path = "./resources/github_files/"
+        uploaded_files = upload_files_from_directory(vector_store_id, directory_path)
+        print(f"Total files uploaded: {len(uploaded_files)}")
+        print("Files Uploaded:")
+        for file_info in uploaded_files:
+            print(f"{file_info['filename']}: {file_info['upload_response']}")
+        # Extract file IDs from uploaded_files
+        file_ids = [file_info['file_id'] for file_info in uploaded_files]
+
+        # Example: Use the extracted file IDs to create a batch in a vector store
+        create_file_batch(vector_store_id, file_ids)
+    except requests.exceptions.RequestException as e:
+        print("An error occurred:", e)
+    
+    # Start the Flask app
+    app.run()
