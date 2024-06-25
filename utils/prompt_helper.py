@@ -1,4 +1,5 @@
 import re
+import json
 
 def preprocess_oneline_quotes(prompt):
     prompt = re.sub(r"\r?\n|\r", " ", prompt)  # makes all in one line
@@ -16,4 +17,5 @@ def read_prompt_from_file(filePath):
 def clean_json_response(resp):
     resp = resp.replace('```json', '')
     resp = resp.replace('```' , '')
-    return resp
+    resp = resp.replace('\n', '')
+    return json.loads(resp)
