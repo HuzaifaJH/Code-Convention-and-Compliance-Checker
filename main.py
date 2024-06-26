@@ -26,6 +26,8 @@ def check_code_conventions():
         if 'git_diff' in data:
             git_diff = data['git_diff']
             git_diff = prompt_helper.preprocess_oneline_quotes(git_diff)
+            git_diff = "New Code: "+git_diff
+            # print(f"git_diff after preprocessing: {git_diff}")
             # Process the git_diff as needed
             
             thread = client.beta.threads.create()

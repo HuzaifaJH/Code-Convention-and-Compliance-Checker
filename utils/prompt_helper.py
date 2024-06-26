@@ -18,4 +18,5 @@ def clean_json_response(resp):
     resp = resp.replace('```json', '')
     resp = resp.replace('```' , '')
     resp = resp.replace('\n', '')
+    resp = resp.replace('\xa0', '')
     return json.loads(resp)
