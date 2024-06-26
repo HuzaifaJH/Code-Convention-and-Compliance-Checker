@@ -25,7 +25,11 @@ def check_code_conventions():
         
         if 'git_diff' in data:
             git_diff = data['git_diff']
-            git_diff = prompt_helper.preprocess_oneline_quotes(git_diff)
+            filtered_lines = [line for line in git_diff.split('\n') if line.startswith('+') or line.startswith('-')]
+
+            # Join the filtered lines back into a single string
+            filtered_diff = '\n'.join(filtered_lines)
+            git_diff = prompt_helper.preprocess_oneline_quotes(filtered_diff)
             git_diff = "New Code: "+git_diff
             # print(f"git_diff after preprocessing: {git_diff}")
             # Process the git_diff as needed
@@ -81,6 +85,10 @@ def upload_files_from_directory(vector_store_id, directory_path):
         file_path = os.path.join(directory_path, filename)
         
         if os.path.isfile(file_path):
+            if "pre-commit" in filename:
+                print(f"Skipping file: {filename} (contains 'pre-commit')")
+                continue
+
             try:
                 # Check if the file already exists in the vector store
                 if filename in existing_file_names:
