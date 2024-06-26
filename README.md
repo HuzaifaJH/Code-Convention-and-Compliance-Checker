@@ -17,7 +17,7 @@ REPOSITORYNAME = 'github repo name'
 python main.py
 Utility will download all the files from the repo and upload on the OpenAI vector storage and connect that storage with GPT Assistant
 
-# Step 4: Setup git hool
+# Step 4: Setup githook
 Add CheckCodeConventions api url of this utility in git hook file in .net project
 
 
