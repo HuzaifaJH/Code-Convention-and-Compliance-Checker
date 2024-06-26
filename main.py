@@ -124,7 +124,7 @@ def create_file_batch(vector_store_id, file_ids):
     
     print(f"Batch creation status: {batch_add.status}")
 
-if __name__ == '__main__':
+def init():
     # GitHub processing
     owner = 'Farukh-Shaikh'
     repo = 'Order-Management'
@@ -146,6 +146,9 @@ if __name__ == '__main__':
         create_file_batch(vector_store_id, file_ids) # Example: Use the extracted file IDs to create a batch in a vector store
     except requests.exceptions.RequestException as e:
         print("An error occurred:", e)
+
+if __name__ == '__main__':
     
+    #init()
     # Start the Flask app
     app.run()
