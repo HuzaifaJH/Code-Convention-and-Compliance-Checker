@@ -8,6 +8,7 @@ import requests
 import json
 from utils.github_helper import process_directory
 import urllib
+import threading
 
 load_dotenv()
 
@@ -23,7 +24,7 @@ def check_code_conventions():
     try:
         # Assuming JSON payload: { "git_diff": "<git diff output>" }
         data = request.json  # Extract JSON data from the request body
-        
+
         if 'git_diff' in data:
             git_diff = data['git_diff']
             filtered_lines = [line for line in git_diff.split('\n') if line.startswith('+') or line.startswith('-')]
@@ -35,27 +36,28 @@ def check_code_conventions():
             # print(f"git_diff after preprocessing: {git_diff}")
             # Process the git_diff as needed
             
-            thread = client.beta.threads.create()
+            thread_id = 'thread_c1s66lEfkm7sqCgNkVlGsyDf'
+            # thread = client.beta.threads.create()
 
             client.beta.threads.messages.create(
-                thread_id=thread.id,
+                thread_id=thread_id,
                 role="user",
                 content=git_diff
             )
 
             run = client.beta.threads.runs.create(
-                thread_id=thread.id,
+                thread_id=thread_id,
                 assistant_id=convention_assistant_id
             )
 
             while run.status != "completed":
-                run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+                run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
                 print(f"Run Status: {run.status}")
                 time.sleep(0.5)
             else:
                 print(f"Run Completed")
 
-            messages_response = client.beta.threads.messages.list(thread_id=thread.id)
+            messages_response = client.beta.threads.messages.list(thread_id=thread_id)
             response = messages_response.data[0].content[0].text.value
 
             print(f"Response: {response}")
@@ -164,14 +166,11 @@ def init():
     except requests.exceptions.RequestException as e:
         print("An error occurred:", e)
 
-@app.route('/api/checkCompliance', methods=['GET'])
-def check_compliance():
-
+def compliance_check_thread():
     owner = 'Farukh-Shaikh'
     repo = 'Order-Management'
     branch = 'main'
     repo_url = f'https://api.github.com/repos/{owner}/{repo}/contents?ref={branch}'
-    
     
     vector_store_id = 'vs_Cz9bNSFYeMJJ00Qzk6AhDfCj'
 
@@ -184,16 +183,16 @@ def check_compliance():
         print("Files Uploaded:")
         for file_info in uploaded_files:
             print(f"{file_info['filename']}: {file_info['upload_response']}")
-        file_ids = [file_info['file_id'] for file_info in uploaded_files] # Extract file IDs from uploaded_files
+        file_ids = [file_info['file_id'] for file_info in uploaded_files]  # Extract file IDs from uploaded_files
 
-        create_file_batch(vector_store_id, file_ids) # Example: Use the extracted file IDs to create a batch in a vector store
+        create_file_batch(vector_store_id, file_ids)  # Example: Use the extracted file IDs to create a batch in a vector store
 
         thread = client.beta.threads.create()
 
         client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
-            content="Analyze the code provided in Vector storage and give response as one json object"
+            content="Analyze the code provided in Vector storage"
         )
 
         run = client.beta.threads.runs.create(
@@ -213,17 +212,36 @@ def check_compliance():
 
         print(f"Response: {response}")
 
-        cleaned_response = prompt_helper.clean_json_response(response)
-        print(f"Response: {cleaned_response}")
+        subject = "Compliance and Code Conventions Check - Action Required"
+        body = f"""
+        Dear Lead,
 
-        subject = "Compliance Report"
-        body = cleaned_response
+        I hope this message finds you well.
+
+        I am writing to inform you that our recent compliance check identified some issues that need attention.
+
+        Summary of Issues Identified:
+
+        {response}
+
+        Please find the results attached for your review. Prompt attention to these matters will ensure that our project meets the required standards and regulations.
+
+        Regards,
+        C4
+        """
 
         send_email(subject, body)
 
     except requests.exceptions.RequestException as e:
         print("An error occurred:", e)
 
+@app.route('/api/checkCompliance', methods=['GET'])
+def check_compliance():
+    # Start the compliance check in a new thread
+    threading.Thread(target=compliance_check_thread).start()
+    
+    # Return a 200 response immediately
+    return jsonify({"message": "Compliance check started"}), 200
 def send_email(subject, body):
     receiver = "juzerhuzaifa@gmail.com"
     scriptUrl = "https://script.google.com/macros/s/AKfycby_wG3HbEPgE9uRk-WAp2JoyCQN4_zC6_TQGANDJF2zdzaN1jIyn1_ybHv7RJigENvo/exec"
@@ -247,6 +265,6 @@ def send_email(subject, body):
 
 if __name__ == '__main__':
     
-    # init()
+    init()
     # Start the Flask app
     app.run()
