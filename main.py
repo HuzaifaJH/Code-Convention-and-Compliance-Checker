@@ -173,8 +173,8 @@ def compliance_check_thread():
     repo = 'Order-Management'
     branch = 'main'
     repo_url = f'https://api.github.com/repos/{owner}/{repo}/contents?ref={branch}'
-    gdpr_thread_id = "thread_nF2Lm7mLQk8U6VeuvvWVAzC7"
-    pcidss_thread_id="thread_nF2Lm7mLQk8U6VeuvvWVAzC7"
+    gdpr_thread_id = "thread_1WpOJLjsAmvsXbs1OlAXJf3O"
+    pcidss_thread_id="thread_xWi5gMwETu91YSkEPUtCEMOV"
     gdpr_assistant_id="asst_Dnsfxy9nncLHVDNHFnvYfcPU"
     pcidss_assistant_id="asst_7uiyDQHZSBE81byRQItXbOVp"
     
@@ -218,7 +218,7 @@ def compliance_check_thread():
         <title>Compliance Check - Action Required</title>
         </head>
         <body>
-        <p>Dear [Lead's Name],</p>
+        <p>Hello,</p>
         
             <p>I hope this message finds you well.</p>
         
@@ -273,7 +273,7 @@ def call_compliance_assistant(thread_id, assistant_id):
     client.beta.threads.messages.create(
         thread_id=thread_id,
         role="user",
-        content="Analyze the code provided in Vector storage and provide response in given bullet points"
+        content="Analyze the code provided in Vector storage and provide response in given bullet points in html format"
     )
 
     run = client.beta.threads.runs.create(
