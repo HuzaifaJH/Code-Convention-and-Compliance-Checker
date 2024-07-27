@@ -249,22 +249,27 @@ def check_compliance():
     
     # Return a 200 response immediately
     return jsonify({"message": "Compliance check started"}), 200
+
 def send_email(subject, body):
     receiver = "juzerhuzaifa@gmail.com"
-    scriptUrl = "https://script.google.com/macros/s/AKfycby_wG3HbEPgE9uRk-WAp2JoyCQN4_zC6_TQGANDJF2zdzaN1jIyn1_ybHv7RJigENvo/exec"
+    scriptUrl = "https://script.google.com/macros/s/AKfycbyl6njc2BMBh1OUOuE9q5xJKxkaUFbJsJOI5eIX578jXBmZXyXlaL6Gi_yiEdXcbEfS/exec"
  
-    query_params = { 'email': receiver, 'title': subject, 'body': body}
-    encoded_params = urllib.parse.urlencode(query_params)
-    scriptUrl = scriptUrl + "?" + encoded_params
- 
+    payload = {
+        'email': receiver,
+        'title': subject,
+        'body': body
+    }
+    
     try:
-        response = requests.get(scriptUrl)
+        response = requests.post(scriptUrl, data=payload)
  
         if response.status_code == 200:
             print("Success:", response.text)
         else:
             print("Failed with status code:", response.status_code)
             print("Response:", response.text)
+    except requests.RequestException as e:
+        print("An error occurred:", e)
  
     except Exception as e:
         print(f"Failed to send email: {e}")
