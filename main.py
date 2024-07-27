@@ -9,6 +9,8 @@ import json
 from utils.github_helper import process_directory
 import urllib
 import threading
+import concurrent.futures
+import time
 
 load_dotenv()
 
@@ -171,6 +173,10 @@ def compliance_check_thread():
     repo = 'Order-Management'
     branch = 'main'
     repo_url = f'https://api.github.com/repos/{owner}/{repo}/contents?ref={branch}'
+    gdpr_thread_id = "thread_nF2Lm7mLQk8U6VeuvvWVAzC7"
+    pcidss_thread_id="thread_nF2Lm7mLQk8U6VeuvvWVAzC7"
+    gdpr_assistant_id="asst_Dnsfxy9nncLHVDNHFnvYfcPU"
+    pcidss_assistant_id="asst_7uiyDQHZSBE81byRQItXbOVp"
     
     vector_store_id = 'vs_Cz9bNSFYeMJJ00Qzk6AhDfCj'
 
@@ -187,47 +193,48 @@ def compliance_check_thread():
 
         create_file_batch(vector_store_id, file_ids)  # Example: Use the extracted file IDs to create a batch in a vector store
 
-        thread = client.beta.threads.create()
+        # with concurrent.futures.ThreadPoolExecutor() as executor:
+        # # Submit both tasks to the executor
+        #     future_1 = executor.submit(call_compliance_assistant, gdpr_thread_id, gdpr_assistant_id)
+        #     future_2 = executor.submit(call_compliance_assistant, pcidss_thread_id, pcidss_assistant_id)
 
-        client.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="user",
-            content="Analyze the code provided in Vector storage"
-        )
+        #     # Wait for both tasks to complete
+        #     response_1 = future_1.result()
+        #     response_2 = future_2.result()
+        
 
-        run = client.beta.threads.runs.create(
-            thread_id=thread.id,
-            assistant_id="asst_Dnsfxy9nncLHVDNHFnvYfcPU"
-        )
+        response_1=call_compliance_assistant( gdpr_thread_id, gdpr_assistant_id)
+        response_2=call_compliance_assistant( pcidss_thread_id, pcidss_assistant_id)
 
-        while run.status != "completed":
-            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
-            print(f"Run Status: {run.status}")
-            time.sleep(0.5)
-        else:
-            print(f"Run Completed")
-
-        messages_response = client.beta.threads.messages.list(thread_id=thread.id)
-        response = messages_response.data[0].content[0].text.value
+        response = response_1 + response_2
 
         print(f"Response: {response}")
 
         subject = "Compliance and Code Conventions Check - Action Required"
         body = f"""
-        Dear Lead,
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <title>Compliance Check - Action Required</title>
+        </head>
+        <body>
+        <p>Dear [Lead's Name],</p>
+        
+            <p>I hope this message finds you well.</p>
+        
+            <p>I am writing to inform you that our recent [compliance name] check identified some issues that need attention.</p>
+        
+            <h2>Summary of Issues Identified</h2>
 
-        I hope this message finds you well.
-
-        I am writing to inform you that our recent compliance check identified some issues that need attention.
-
-        Summary of Issues Identified:
-
-        {response}
-
-        Please find the results attached for your review. Prompt attention to these matters will ensure that our project meets the required standards and regulations.
-
-        Regards,
-        C4
+            {response}
+        
+            <p>Please find the results attached for your review. Prompt attention to these matters will ensure that our project meets the required standards and regulations.</p>
+        
+            <p>Regards,</p>
+        
+            <p>Your AI Assistant</p>
+        </body>
+        </html>
         """
 
         send_email(subject, body)
@@ -262,9 +269,32 @@ def send_email(subject, body):
     except Exception as e:
         print(f"Failed to send email: {e}")
 
+def call_compliance_assistant(thread_id, assistant_id):
+    client.beta.threads.messages.create(
+        thread_id=thread_id,
+        role="user",
+        content="Analyze the code provided in Vector storage and provide response in given bullet points"
+    )
+
+    run = client.beta.threads.runs.create(
+        thread_id=thread_id,
+        assistant_id=assistant_id
+    )
+
+    while run.status != "completed":
+        run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
+        print(f"Run Status: {run.status}")
+        time.sleep(0.5)
+
+    print(f"Run Completed")
+
+    messages_response = client.beta.threads.messages.list(thread_id=thread_id)
+    response = messages_response.data[0].content[0].text.value
+    return response
+
 
 if __name__ == '__main__':
     
-    init()
+    #init()
     # Start the Flask app
     app.run()
