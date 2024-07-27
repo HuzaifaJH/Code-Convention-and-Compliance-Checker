@@ -23,10 +23,6 @@ def check_code_conventions():
     try:
         # Assuming JSON payload: { "git_diff": "<git diff output>" }
         data = request.json  # Extract JSON data from the request body
-
-        subject = "Test Email"
-        body = "Hello world"
-        send_email(subject, body)
         
         if 'git_diff' in data:
             git_diff = data['git_diff']
@@ -215,21 +211,15 @@ def check_compliance():
         messages_response = client.beta.threads.messages.list(thread_id=thread.id)
         response = messages_response.data[0].content[0].text.value
 
-        to_address = "huzaifajuzer@hotmail.com"
-        subject = "Test Email"
-        body = response
-        send_email(to_address, subject, body)
-
         print(f"Response: {response}")
 
         cleaned_response = prompt_helper.clean_json_response(response)
         print(f"Response: {cleaned_response}")
 
-        to_address = "huzaifajuzer@hotmail.com"
-        subject = "Test Email"
+        subject = "Compliance Report"
         body = cleaned_response
 
-        send_email(to_address, subject, body)
+        send_email(subject, body)
 
     except requests.exceptions.RequestException as e:
         print("An error occurred:", e)
