@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import requests
 import json
 from utils.github_helper import process_directory
+import urllib
 
 load_dotenv()
 
@@ -22,6 +23,10 @@ def check_code_conventions():
     try:
         # Assuming JSON payload: { "git_diff": "<git diff output>" }
         data = request.json  # Extract JSON data from the request body
+
+        subject = "Test Email"
+        body = "Hello world"
+        send_email(subject, body)
         
         if 'git_diff' in data:
             git_diff = data['git_diff']
@@ -61,6 +66,13 @@ def check_code_conventions():
 
             cleaned_response = prompt_helper.clean_json_response(response)
             
+            for item in cleaned_response['Explanation']:
+                if item['Score'] > 7:
+                    cleaned_response['Validation'] = False
+                    break
+                elif item['Score'] != 0 and item['Score'] < 7:
+                    cleaned_response ['Validation'] = True
+
             # Example response
             return jsonify(cleaned_response), 200
         else:
@@ -73,7 +85,7 @@ def check_code_conventions():
 def UploadVectorFile():
     return
 
-def upload_files_from_directory(vector_store_id, directory_path):
+def upload_files_from_directory(directory_path):
     files_uploaded = []
     
     # Fetch existing files in the vector store
@@ -142,9 +154,10 @@ def init():
     vector_store_id = 'vs_FEaAVUV1u1j9AOFWb2mKC9a9'
 
     try:
-        process_directory(repo_url)
+        base_dir = './resources/github_files'
+        process_directory(repo_url, base_dir)
         directory_path = "./resources/github_files/"
-        uploaded_files = upload_files_from_directory(vector_store_id, directory_path)
+        uploaded_files = upload_files_from_directory(directory_path)
         print(f"Total files uploaded: {len(uploaded_files)}")
         print("Files Uploaded:")
         for file_info in uploaded_files:
@@ -155,8 +168,95 @@ def init():
     except requests.exceptions.RequestException as e:
         print("An error occurred:", e)
 
+@app.route('/api/checkCompliance', methods=['GET'])
+def check_compliance():
+
+    owner = 'Farukh-Shaikh'
+    repo = 'Order-Management'
+    branch = 'main'
+    repo_url = f'https://api.github.com/repos/{owner}/{repo}/contents?ref={branch}'
+    
+    
+    vector_store_id = 'vs_Cz9bNSFYeMJJ00Qzk6AhDfCj'
+
+    try:
+        compliance_dir = './compliance/github_files'
+        process_directory(repo_url, compliance_dir)
+        directory_path = "./compliance/github_files/"
+        uploaded_files = upload_files_from_directory(directory_path)
+        print(f"Total files uploaded: {len(uploaded_files)}")
+        print("Files Uploaded:")
+        for file_info in uploaded_files:
+            print(f"{file_info['filename']}: {file_info['upload_response']}")
+        file_ids = [file_info['file_id'] for file_info in uploaded_files] # Extract file IDs from uploaded_files
+
+        create_file_batch(vector_store_id, file_ids) # Example: Use the extracted file IDs to create a batch in a vector store
+
+        thread = client.beta.threads.create()
+
+        client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content="Analyze the code provided in Vector storage and give response as one json object"
+        )
+
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id="asst_Dnsfxy9nncLHVDNHFnvYfcPU"
+        )
+
+        while run.status != "completed":
+            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+            print(f"Run Status: {run.status}")
+            time.sleep(0.5)
+        else:
+            print(f"Run Completed")
+
+        messages_response = client.beta.threads.messages.list(thread_id=thread.id)
+        response = messages_response.data[0].content[0].text.value
+
+        to_address = "huzaifajuzer@hotmail.com"
+        subject = "Test Email"
+        body = response
+        send_email(to_address, subject, body)
+
+        print(f"Response: {response}")
+
+        cleaned_response = prompt_helper.clean_json_response(response)
+        print(f"Response: {cleaned_response}")
+
+        to_address = "huzaifajuzer@hotmail.com"
+        subject = "Test Email"
+        body = cleaned_response
+
+        send_email(to_address, subject, body)
+
+    except requests.exceptions.RequestException as e:
+        print("An error occurred:", e)
+
+def send_email(subject, body):
+    receiver = "juzerhuzaifa@gmail.com"
+    scriptUrl = "https://script.google.com/macros/s/AKfycby_wG3HbEPgE9uRk-WAp2JoyCQN4_zC6_TQGANDJF2zdzaN1jIyn1_ybHv7RJigENvo/exec"
+ 
+    query_params = { 'email': receiver, 'title': subject, 'body': body}
+    encoded_params = urllib.parse.urlencode(query_params)
+    scriptUrl = scriptUrl + "?" + encoded_params
+ 
+    try:
+        response = requests.get(scriptUrl)
+ 
+        if response.status_code == 200:
+            print("Success:", response.text)
+        else:
+            print("Failed with status code:", response.status_code)
+            print("Response:", response.text)
+ 
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+
 if __name__ == '__main__':
     
-    #init()
+    # init()
     # Start the Flask app
     app.run()
